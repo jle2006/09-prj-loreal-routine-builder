@@ -49,9 +49,66 @@ categoryFilter.addEventListener("change", async (e) => {
   displayProducts(filteredProducts);
 });
 
-/* Chat form submission handler - placeholder for OpenAI integration */
-chatForm.addEventListener("submit", (e) => {
+/* Helper: send messages to your server proxy which calls the OpenAI API */
+async function fetchOpenAIFromServer(messages) {
+  // POST the messages to your server endpoint that has the API key
+  const res = await fetch("/openai", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages }),
+  });
+
+  const data = await res.json();
+  // Expect server to return the raw OpenAI response JSON (or at least choices)
+  // Guard for expected structure
+  if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+    throw new Error("Unexpected OpenAI response shape");
+  }
+  return data.choices[0].message.content;
+}
+
+/* Replace the placeholder chat handler with a real one */
+chatForm.addEventListener("submit", async (e) => {
   e.preventDefault();
 
-  chatWindow.innerHTML = "Connect to the OpenAI API for a response!";
+  // Collect user input (assumes a textarea/input with id="chatInput")
+  const input = document.getElementById("chatInput");
+  const userText = input.value.trim();
+  if (!userText) return;
+
+  // Show user's message in chat window
+  const userHtml = `<div class="chat-message user"><strong>You:</strong> ${userText}</div>`;
+  chatWindow.innerHTML += userHtml;
+  input.value = "";
+
+  // Build messages array for Chat API (system + user messages)
+  const messages = [
+    { role: "system", content: "You are a helpful assistant." },
+    { role: "user", content: userText },
+  ];
+
+  // Show a "thinking" message while waiting
+  const thinkingId = `thinking-${Date.now()}`;
+  chatWindow.innerHTML += `<div id="${thinkingId}" class="chat-message assistant">Thinking...</div>`;
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+
+  try {
+    const assistantText = await fetchOpenAIFromServer(messages);
+
+    // Replace the thinking message with the assistant response
+    const thinkingEl = document.getElementById(thinkingId);
+    if (thinkingEl) {
+      thinkingEl.outerHTML = `<div class="chat-message assistant"><strong>Assistant:</strong> ${assistantText}</div>`;
+    } else {
+      chatWindow.innerHTML += `<div class="chat-message assistant"><strong>Assistant:</strong> ${assistantText}</div>`;
+    }
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  } catch (err) {
+    const thinkingEl = document.getElementById(thinkingId);
+    if (thinkingEl)
+      thinkingEl.outerHTML = `<div class="chat-message assistant error">Error: ${err.message}</div>`;
+    else
+      chatWindow.innerHTML += `<div class="chat-message assistant error">Error: ${err.message}</div>`;
+    console.error(err);
+  }
 });
