@@ -49,10 +49,3 @@ const server = http.createServer(async (req, res) => {
     res.end("Not found");
   }
 });
-
-server.listen(PORT, () => {
-  console.log(`Server listening on http://localhost:${PORT}`);
-});
-# macOS / Linux
-export OPENAI_API_KEY="https://loreal-chatbot.lejenna737.workers.dev/"
-node server.js
